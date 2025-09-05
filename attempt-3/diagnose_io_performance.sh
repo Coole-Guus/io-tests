@@ -1,107 +1,118 @@
 #!/bin/bash
 
-# Diagnostic script to analyze why container IO performance is lower than VM
-# This helps identify bottlenecks and configuration issues
+# Advanced diagnostic script to investigate IO performance discrepancies
+cd /home/guus/code-projects/io-tests/attempt-3
 
-source "$(dirname "${BASH_SOURCE[0]}")/config.sh"
+source config.sh
+source utils.sh
+source network_setup.sh
+source firecracker_setup.sh
+source container_setup.sh
 
-echo "=== IO Performance Diagnostic ==="
-echo "Configuration:"
-echo "  VCPU_COUNT: $VCPU_COUNT"
-echo "  MEMORY_SIZE_MIB: $MEMORY_SIZE_MIB"
-echo "  DISK_SIZE_MB: $DISK_SIZE_MB"
-echo ""
+echo "🔍 DIAGNOSING IO PERFORMANCE FAIRNESS ISSUES"
+echo "==============================================="
 
-echo "=== Host System Information ==="
-echo "CPU Info:"
-lscpu | grep -E "(Model name|CPU\(s\)|Thread|Core)"
-echo ""
+# Start both systems
+echo "Starting network and systems..."
+setup_network
+setup_firecracker_vm &
+setup_container &
 
-echo "Memory Info:"
+# Wait for both to be ready
+wait
+
+echo
+echo "📊 SYSTEM RESOURCE VERIFICATION"
+echo "==============================================="
+
+echo "🔸 Host CPU usage:"
+top -bn1 | grep -E "(Cpu|firecracker|docker)" | head -5
+
+echo
+echo "🔸 Host memory usage:"
 free -h
-echo ""
 
-echo "Storage Info:"
-df -h / | head -2
-echo ""
+echo
+echo "🔸 Host disk I/O:"
+iostat -x 1 1 2>/dev/null || echo "iostat not available"
 
-echo "Docker Info:"
-docker info | grep -E "(Storage Driver|Backing Filesystem|Kernel Version)" | head -3
-echo ""
+echo
+echo "📦 CONTAINER STORAGE ANALYSIS"
+echo "==============================================="
 
-echo "=== Performance Comparison Test ==="
+echo "🔸 Container loop device:"
+docker exec io_test_container lsblk | grep test_disk
+echo "🔸 Container mount info:"
+docker exec io_test_container df -h /mnt/test_data
+echo "🔸 Container block device info:"
+docker exec io_test_container lsblk -f /dev/test_disk 2>/dev/null || echo "Block device info not available"
+echo "🔸 Container CPU constraints:"
+docker stats io_test_container --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}"
 
-# Test host filesystem performance first
-echo "Testing host filesystem performance..."
-cd /tmp
-fio --name=host_test --rw=write --size=10M --bs=64k --numjobs=1 --runtime=5s --time_based --group_reporting --filename=host_test_file --direct=1 --fsync=1 2>/dev/null | grep -E "(write.*MB/s|lat.*usec)"
-rm -f host_test_file
+echo
+echo "🔸 Container test write (10MB):"
+docker exec io_test_container /bin/bash -c "cd /mnt/test_data && dd if=/dev/zero of=test_write bs=1M count=10 conv=fsync 2>&1 | grep -E 'bytes|MB/s'"
 
-echo ""
-echo "Testing Docker container performance..."
+echo
+echo "🖥️  FIRECRACKER VM STORAGE ANALYSIS"  
+echo "==============================================="
 
-# Setup container for testing
-echo "Setting up test container..."
-docker stop io_perf_test 2>/dev/null || true
-docker rm io_perf_test 2>/dev/null || true
-docker volume rm io_perf_volume 2>/dev/null || true
-docker volume create io_perf_volume >/dev/null
+echo "🔸 VM block devices:"
+ssh -i "./ubuntu-24.04.id_rsa" -o StrictHostKeyChecking=no -o ConnectTimeout=5 root@172.17.0.2 "lsblk"
+echo "🔸 VM mount info:"
+ssh -i "./ubuntu-24.04.id_rsa" -o StrictHostKeyChecking=no -o ConnectTimeout=5 root@172.17.0.2 "df -h /mnt/test_data"
+echo "🔸 VM block device details:"
+ssh -i "./ubuntu-24.04.id_rsa" -o StrictHostKeyChecking=no -o ConnectTimeout=5 root@172.17.0.2 "lsblk -f /dev/vdb"
 
-# Test with overlay2 (default)
-echo "Test 1: Container with overlay2 filesystem"
-docker run --rm \
-    --cpus="$VCPU_COUNT.0" \
-    --memory="${MEMORY_SIZE_MIB}m" \
-    ubuntu:20.04 \
-    /bin/bash -c "
-        apt-get update -qq && apt-get install -y fio >/dev/null 2>&1
-        mkdir -p /root/test_data && cd /root/test_data
-        fio --name=container_overlay_test --rw=write --size=10M --bs=64k --numjobs=1 --runtime=5s --time_based --group_reporting --filename=test_file --direct=1 --fsync=1 2>/dev/null
-    " | grep -E "(write.*MB/s|lat.*usec)"
+echo
+echo "🔸 VM test write (10MB):"
+ssh -i "./ubuntu-24.04.id_rsa" -o StrictHostKeyChecking=no -o ConnectTimeout=5 root@172.17.0.2 "cd /mnt/test_data && dd if=/dev/zero of=test_write bs=1M count=10 conv=fsync 2>&1 | grep -E 'bytes|MB/s'"
 
-echo ""
-echo "Test 2: Container with dedicated volume"
-docker run --rm \
-    --cpus="$VCPU_COUNT.0" \
-    --memory="${MEMORY_SIZE_MIB}m" \
-    --mount source=io_perf_volume,target=/mnt/test_data \
-    ubuntu:20.04 \
-    /bin/bash -c "
-        apt-get update -qq && apt-get install -y fio >/dev/null 2>&1
-        cd /mnt/test_data
-        fio --name=container_volume_test --rw=write --size=10M --bs=64k --numjobs=1 --runtime=5s --time_based --group_reporting --filename=test_file --direct=1 --fsync=1 2>/dev/null
-    " | grep -E "(write.*MB/s|lat.*usec)"
+echo
+echo "⚡ BASIC FIO COMPARISON TEST"
+echo "==============================================="
 
-echo ""
-echo "Test 3: Container with tmpfs (memory-based)"
-docker run --rm \
-    --cpus="$VCPU_COUNT.0" \
-    --memory="${MEMORY_SIZE_MIB}m" \
-    --tmpfs /mnt/test_data:rw,noexec,nosuid,size=100m \
-    ubuntu:20.04 \
-    /bin/bash -c "
-        apt-get update -qq && apt-get install -y fio >/dev/null 2>&1
-        cd /mnt/test_data
-        fio --name=container_tmpfs_test --rw=write --size=10M --bs=64k --numjobs=1 --runtime=5s --time_based --group_reporting --filename=test_file --fsync=1 2>/dev/null
-    " | grep -E "(write.*MB/s|lat.*usec)"
+echo "🔸 Container simple random read test:"
+docker exec io_test_container /bin/bash -c "cd /mnt/test_data && fio --name=test --rw=randread --size=50M --bs=4k --numjobs=1 --runtime=5s --time_based --group_reporting --filename=testfile --direct=1 | grep -E '(read:|aggrb=)'"
 
-# Cleanup
-docker volume rm io_perf_volume 2>/dev/null || true
+echo
+echo "🔸 Firecracker simple random read test:"
+ssh -i "./ubuntu-24.04.id_rsa" -o StrictHostKeyChecking=no -o ConnectTimeout=10 root@172.17.0.2 "cd /mnt/test_data && fio --name=test --rw=randread --size=50M --bs=4k --numjobs=1 --runtime=5s --time_based --group_reporting --filename=testfile --direct=1 | grep -E '(read:|aggrb=)'"
 
-echo ""
-echo "=== Analysis ==="
-echo "If you see significant performance differences:"
-echo "1. Host performance = baseline reference"
-echo "2. Container overlay2 = typically 10-30% slower due to filesystem layers"
-echo "3. Container volume = should be closer to host performance"
-echo "4. Container tmpfs = should be fastest (memory-based)"
-echo ""
-echo "Expected results for your configuration:"
-echo "- VM performance: Using direct ext4 access on dedicated disk"
-echo "- Container performance: Should be similar with volume mount"
-echo ""
-echo "If container is still much slower, consider:"
-echo "- Docker storage driver optimization"
-echo "- Host filesystem type (ext4 vs others)"
-echo "- Hardware-specific limitations"
-echo "- Container resource limits"
+echo
+echo "🔧 HOST STORAGE BACKEND ANALYSIS"
+echo "==============================================="
+
+echo "🔸 Host loop devices in use:"
+sudo losetup -a | grep -E "(test_disk|\.ext4)"
+
+echo "🔸 Host disk files:"
+ls -la *.ext4 test_disk* 2>/dev/null | head -5
+
+echo "🔸 Host filesystem cache status:"
+echo "Available memory: $(free -h | awk '/Available/ {print $7}')"
+echo "Cached: $(free -h | awk '/^Mem:/ {print $6}')"
+
+echo
+echo "🎯 FAIRNESS ISSUES IDENTIFIED:"
+echo "==============================================="
+
+# Check if both are using the same underlying storage
+container_loop=$(docker exec io_test_container lsblk /dev/test_disk -no FSTYPE 2>/dev/null || echo "unknown")
+vm_filesystem=$(ssh -i "./ubuntu-24.04.id_rsa" -o StrictHostKeyChecking=no root@172.17.0.2 "lsblk /dev/vdb -no FSTYPE" 2>/dev/null || echo "unknown")
+
+echo "📍 Container filesystem: $container_loop"
+echo "📍 VM filesystem: $vm_filesystem"
+
+if [ "$container_loop" = "$vm_filesystem" ]; then
+    echo "✅ Same filesystem type"
+else
+    echo "❌ Different filesystem types - potential unfairness!"
+fi
+
+# Check CPU constraints
+echo "📍 Container CPU limit: $(docker inspect io_test_container | grep -i cpu | head -2)"
+echo "📍 VM process CPU constraints: $(ps -o pid,comm,psr -p $(pgrep firecracker) 2>/dev/null || echo 'VM not found')"
+
+echo
+echo "Diagnosis complete! Check for discrepancies above."

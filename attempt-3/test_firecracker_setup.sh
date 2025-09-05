@@ -56,10 +56,15 @@ if wait_for_connectivity "$GUEST_IP"; then
         fi
         
         # Test working directory
-        if timeout 10 ssh -i "./ubuntu-24.04.id_rsa" -o StrictHostKeyChecking=no root@"$GUEST_IP" "test -d /root/test_data" >/dev/null 2>&1; then
+        if timeout 10 ssh -i "./ubuntu-24.04.id_rsa" -o StrictHostKeyChecking=no root@"$GUEST_IP" "test -d /mnt/test_data" >/dev/null 2>&1; then
+            echo "✓ Test data directory '/mnt/test_data' exists in VM"
+            test_dir="/mnt/test_data"
+        elif timeout 10 ssh -i "./ubuntu-24.04.id_rsa" -o StrictHostKeyChecking=no root@"$GUEST_IP" "test -d /root/test_data" >/dev/null 2>&1; then
             echo "✓ Test data directory '/root/test_data' exists in VM"
+            test_dir="/root/test_data"
         else
-            echo "❌ Test data directory '/root/test_data' not found in VM"
+            echo "❌ Test data directory not found in VM"
+            test_dir="/root/test_data"  # fallback
         fi
         
         # Check available disk space
@@ -68,7 +73,7 @@ if wait_for_connectivity "$GUEST_IP"; then
         
         # Test a simple IO operation
         echo "Testing simple IO operation in VM..."
-        if timeout 10 ssh -i "./ubuntu-24.04.id_rsa" -o StrictHostKeyChecking=no root@"$GUEST_IP" "cd /root/test_data && echo 'test' > test_file && cat test_file && rm test_file" >/dev/null 2>&1; then
+        if timeout 10 ssh -i "./ubuntu-24.04.id_rsa" -o StrictHostKeyChecking=no root@"$GUEST_IP" "cd $test_dir && echo 'test' > test_file && cat test_file && rm test_file" >/dev/null 2>&1; then
             echo "✓ Basic file I/O operations work in VM"
         else
             echo "❌ Basic file I/O operations failed in VM"
@@ -76,12 +81,12 @@ if wait_for_connectivity "$GUEST_IP"; then
         
         # Test fio with a simple job
         echo "Testing fio with simple job in VM..."
-        simple_fio_result=$(timeout 15 ssh -i "./ubuntu-24.04.id_rsa" -o StrictHostKeyChecking=no root@"$GUEST_IP" "cd /root/test_data && fio --name=test --rw=write --size=1M --bs=4k --numjobs=1 --time_based --runtime=2s --filename=test_fio_file --direct=1" 2>&1)
+        simple_fio_result=$(timeout 15 ssh -i "./ubuntu-24.04.id_rsa" -o StrictHostKeyChecking=no root@"$GUEST_IP" "cd $test_dir && fio --name=test --rw=write --size=1M --bs=4k --numjobs=1 --time_based --runtime=2s --filename=test_fio_file --direct=1" 2>&1)
         
         if echo "$simple_fio_result" | grep -q "Run status"; then
             echo "✓ Simple fio test completed successfully in VM"
             # Clean up test file
-            timeout 10 ssh -i "./ubuntu-24.04.id_rsa" -o StrictHostKeyChecking=no root@"$GUEST_IP" "rm -f /root/test_data/test_fio_file" 2>/dev/null || true
+            timeout 10 ssh -i "./ubuntu-24.04.id_rsa" -o StrictHostKeyChecking=no root@"$GUEST_IP" "rm -f $test_dir/test_fio_file" 2>/dev/null || true
         else
             echo "❌ Simple fio test failed in VM"
             echo "Output: $(echo "$simple_fio_result" | head -3)"

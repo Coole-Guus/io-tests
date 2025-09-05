@@ -1,30 +1,9 @@
-#!/bin/bash
-
-# Analysis module for the IO Performance Comparison Framework
-# Handles results analysis and report generation
-
-# Source configuration
-source "$(dirname "${BASH_SOURCE[0]}")/config.sh"
-
-# Analysis function
-analyze_results() {
-    echo "Analyzing performance results..."
-    
-    # Determine the results directory
-    if [[ -z "$RESULTS_DIR" ]] || [[ ! -d "$RESULTS_DIR" ]]; then
-        # Find the most recent results directory
-        latest_dir=$(ls -d io_benchmark_results_*/ 2>/dev/null | tail -1)
-        if [[ -z "$latest_dir" ]]; then
-            echo "Error: No results directory found"
-            return 1
-        fi
-        RESULTS_DIR=$(basename "$latest_dir" "/")
-        echo "Using most recent results directory: $RESULTS_DIR"
-    fi
-    
-    # Create analysis Python script
-    cat > "${RESULTS_DIR}/analyze_results.py" << 'EOF'
 #!/usr/bin/env python3
+"""
+Standalone IO Performance Analysis Script
+Analyzes results from any benchmark results directory
+"""
+
 import os
 import sys
 import csv
@@ -105,6 +84,10 @@ def analyze_performance(container_file, firecracker_file, test_name):
 def main(results_dir):
     results_dir = Path(results_dir)
     
+    if not results_dir.exists():
+        print(f"Error: Results directory {results_dir} does not exist")
+        return
+    
     print(f"\n{'='*60}")
     print("📊 IO PERFORMANCE ANALYSIS REPORT")
     print(f"{'='*60}")
@@ -113,6 +96,10 @@ def main(results_dir):
     # Find all test result pairs
     container_files = list(results_dir.glob("container_*.csv"))
     all_results = []
+    
+    if not container_files:
+        print("No container CSV files found in results directory")
+        return
     
     for container_file in container_files:
         test_name = container_file.name.replace("container_", "").replace(".csv", "")
@@ -145,6 +132,8 @@ def main(results_dir):
         print(f"\nThroughput comparison:")
         print(f"  • Firecracker wins: {firecracker_throughput_wins}")
         print(f"  • Container wins: {container_throughput_wins}")
+    else:
+        print("No matching result pairs found for analysis")
     
     print(f"\n{'='*60}")
     print("🏁 ANALYSIS COMPLETE")
@@ -152,21 +141,8 @@ def main(results_dir):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: python3 analyze_results.py <results_dir>")
+        print("Usage: python3 standalone_analysis.py <results_dir>")
+        print("Example: python3 standalone_analysis.py io_benchmark_results_20250905_102004")
         sys.exit(1)
     
     main(sys.argv[1])
-EOF
-
-    # Make the analysis script executable
-    chmod +x "${RESULTS_DIR}/analyze_results.py"
-    
-    # Run analysis if Python 3 is available
-    if command -v /home/guus/.venv/bin/python >/dev/null 2>&1; then
-        cd "$RESULTS_DIR" && /home/guus/.venv/bin/python analyze_results.py .
-    elif command -v python3 >/dev/null 2>&1; then
-        cd "$RESULTS_DIR" && python3 analyze_results.py .
-    else
-        echo "Python 3 not available for analysis. Raw data saved in $RESULTS_DIR"
-    fi
-}

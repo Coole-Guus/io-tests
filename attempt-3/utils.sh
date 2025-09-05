@@ -100,9 +100,9 @@ check_prerequisites() {
     fi
     
     # Check for kernel
-    if [ ! -f "../vmlinux-6.1.128" ]; then
+    if [ ! -f "../vmlinux-6.1.141" ]; then
         echo "Error: Kernel not found"
-        echo "Expected: ../vmlinux-6.1.128"
+        echo "Expected: ../vmlinux-6.1.141"
         exit 1
     fi
     

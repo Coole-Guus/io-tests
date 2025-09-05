@@ -78,7 +78,7 @@ setup_firecracker_vm() {
     
     # Copy required files to local directory for absolute paths
     cp "../firecracker" "./firecracker"
-    cp "../vmlinux-6.1.128" "./vmlinux-6.1.128"
+    cp "../vmlinux-6.1.141" "./vmlinux-6.1.141"
     cp "../ubuntu-24.04.ext4" "./ubuntu-24.04.ext4"
     cp "../ubuntu-24.04.id_rsa" "./ubuntu-24.04.id_rsa"
     chmod 600 "./ubuntu-24.04.id_rsa"
@@ -90,24 +90,36 @@ setup_firecracker_vm() {
         mkfs.ext4 -F "./test_disk.ext4" >/dev/null 2>&1
         echo "Created ${DISK_SIZE_MB}MB test disk"
     else
-        echo "Resizing root disk image to provide adequate space for IO tests..."
-        # Create a backup and resize method
+        echo "Using root filesystem (ext4) for testing - expanding image for adequate space..."
+        # Create a backup first
         cp "./ubuntu-24.04.ext4" "./ubuntu-24.04.ext4.backup"
         
-        # Extend the image file first
-        dd if=/dev/zero bs=1M count="$((DISK_SIZE_MB - 400))" >> "./ubuntu-24.04.ext4" 2>/dev/null
+        # Expand the image file to provide more space
+        current_size=$(stat -c%s "./ubuntu-24.04.ext4")
+        target_size=$((DISK_SIZE_MB * 1024 * 1024))
         
-        # Resize the filesystem
-        if ! e2fsck -f -p "./ubuntu-24.04.ext4" >/dev/null 2>&1; then
-            echo "Filesystem check failed, restoring backup..."
-            mv "./ubuntu-24.04.ext4.backup" "./ubuntu-24.04.ext4"
-            echo "Warning: Could not resize root filesystem, using original"
-        elif ! resize2fs "./ubuntu-24.04.ext4" >/dev/null 2>&1; then
-            echo "Resize failed, restoring backup..."
-            mv "./ubuntu-24.04.ext4.backup" "./ubuntu-24.04.ext4"
-            echo "Warning: Could not resize root filesystem, using original"
+        if [ $current_size -lt $target_size ]; then
+            additional_mb=$(((target_size - current_size) / 1024 / 1024))
+            echo "Expanding root filesystem by ${additional_mb}MB..."
+            
+            # Extend the image file
+            dd if=/dev/zero bs=1M count=$additional_mb >> "./ubuntu-24.04.ext4" 2>/dev/null
+            
+            # Resize the filesystem
+            if ! e2fsck -f -p "./ubuntu-24.04.ext4" >/dev/null 2>&1; then
+                echo "Filesystem check failed, restoring backup..."
+                mv "./ubuntu-24.04.ext4.backup" "./ubuntu-24.04.ext4"
+                echo "Warning: Could not resize root filesystem, using original"
+            elif ! resize2fs "./ubuntu-24.04.ext4" >/dev/null 2>&1; then
+                echo "Resize failed, restoring backup..."
+                mv "./ubuntu-24.04.ext4.backup" "./ubuntu-24.04.ext4"
+                echo "Warning: Could not resize root filesystem, using original"
+            else
+                echo "Successfully expanded root filesystem to ~${DISK_SIZE_MB}MB"
+                rm -f "./ubuntu-24.04.ext4.backup"
+            fi
         else
-            echo "Successfully resized root filesystem to ~${DISK_SIZE_MB}MB"
+            echo "Root filesystem already has adequate space"
             rm -f "./ubuntu-24.04.ext4.backup"
         fi
     fi
@@ -213,15 +225,15 @@ setup_firecracker_vm() {
         "http://localhost/logger"
     
     # Set boot source
-    KERNEL_BOOT_ARGS="console=ttyS0 reboot=k panic=1 pci=off"
+    KERNEL_BOOT_ARGS="console=ttyS0 reboot=k panic=1 pci=off root=/dev/vda rw"
     sudo curl -X PUT --unix-socket "${API_SOCKET}" \
         --data "{
-            \"kernel_image_path\": \"$(pwd)/vmlinux-6.1.128\",
+            \"kernel_image_path\": \"$(pwd)/vmlinux-6.1.141\",
             \"boot_args\": \"${KERNEL_BOOT_ARGS}\"
         }" \
         "http://localhost/boot-source"
     
-    # Set rootfs
+    # Set rootfs - using ext4 (read-write) for the OS
     sudo curl -X PUT --unix-socket "${API_SOCKET}" \
         --data "{
             \"drive_id\": \"rootfs\",
@@ -356,14 +368,14 @@ setup_firecracker_vm() {
     fi
     
     # Setup VM networking and install tools
-    ssh -i "./ubuntu-24.04.id_rsa" -o StrictHostKeyChecking=no root@"$GUEST_IP" "
+    echo "Configuring VM networking (skipping package installation for now)..."
+    ssh -i "./ubuntu-24.04.id_rsa" -o StrictHostKeyChecking=no -o PasswordAuthentication=no -o ConnectTimeout=10 root@"$GUEST_IP" "
         # Setup networking
         ip route add default via $TAP_IP dev eth0 2>/dev/null || true
         echo 'nameserver 8.8.8.8' > /etc/resolv.conf
         
-        # Install required packages
-        apt-get update -qq
-        apt-get install -y fio sysstat bc procps >/dev/null 2>&1
+        # Skip package installation that was causing hangs
+        echo 'Skipping apt-get install (packages should be pre-installed in image)'
         
         # Setup test directory based on configuration
         if [ '$USE_DEDICATED_TEST_DISK' = 'true' ] && [ -b /dev/vdb ]; then
@@ -377,9 +389,10 @@ setup_firecracker_vm() {
             echo 'Firecracker storage configuration:'
             echo '==================================='
             echo 'Storage backend: Raw block device (virtio-blk)'
-            echo 'Device: /dev/vdb'
+            echo 'Device: /dev/vdb (dedicated test disk)'
             echo 'Mount point: /mnt/test_data'
             echo 'Filesystem: ext4'
+            echo 'Root: /dev/vda (ext4, read-write)'
             mount | grep test_data
             echo ''
             echo 'VM using dedicated test disk:'
@@ -389,23 +402,30 @@ setup_firecracker_vm() {
             echo ''
             echo 'Block device info:'
             lsblk /dev/vdb 2>/dev/null || true
+            
+            # Verify adequate space
+            available_mb=\$(df -m /mnt/test_data | tail -1 | awk '{print \$4}')
+            test_location='/mnt/test_data'
         else
             echo 'Setting up root filesystem for testing...'
             mkdir -p /root/test_data
             cd /root/test_data && rm -rf ./* 2>/dev/null || true
             sync
             
+            echo 'Firecracker storage configuration:'
+            echo '==================================='
+            echo 'Storage backend: Raw block device (virtio-blk)'
+            echo 'Device: /dev/vda (root filesystem)'
+            echo 'Mount point: /root/test_data'
+            echo 'Filesystem: ext4'
+            echo 'Root: /dev/vda (ext4, read-write)'
+            echo ''
             echo 'VM using root filesystem:'
             df -h /root
             echo 'Available space on root fs:'
             df -h /root | tail -1 | awk '{print \"Available: \" \$4 \" (\" \$5 \" used)\"}'
-        fi
-        
-        # Verify adequate space
-        if [ '$USE_DEDICATED_TEST_DISK' = 'true' ] && [ -b /dev/vdb ]; then
-            available_mb=\$(df -m /mnt/test_data | tail -1 | awk '{print \$4}')
-            test_location='/mnt/test_data'
-        else
+            
+            # Verify adequate space
             available_mb=\$(df -m /root | tail -1 | awk '{print \$4}')
             test_location='/root/test_data'
         fi

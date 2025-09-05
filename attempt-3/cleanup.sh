@@ -104,7 +104,7 @@ cleanup() {
     fi
     
     # Clean up copied files to save space
-    rm -f "./firecracker" "./vmlinux-6.1.128" "./ubuntu-24.04.id_rsa" "./ubuntu-24.04.ext4.backup" 2>/dev/null || true
+    rm -f "./firecracker" "./vmlinux-6.1.141" "./ubuntu-24.04.id_rsa" "./ubuntu-24.04.ext4.backup" 2>/dev/null || true
     
     echo "Cleanup complete"
 }
