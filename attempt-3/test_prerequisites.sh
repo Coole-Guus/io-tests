@@ -53,8 +53,8 @@ echo "Selected tests with current configuration:"
 readarray -t selected_tests < <(get_test_list)
 echo "Total selected: ${#selected_tests[@]}"
 for test in "${selected_tests[@]}"; do
-    echo "  ✓ $test"
+    echo "  $test"
 done
 
 echo ""
-echo "✅ Prerequisites test completed successfully!"
+echo "Prerequisites test completed successfully!"

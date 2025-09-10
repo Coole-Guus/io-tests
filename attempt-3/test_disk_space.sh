@@ -21,18 +21,18 @@ if [ "$USE_DEDICATED_TEST_DISK" = "true" ]; then
     mkfs.ext4 -F "./test_disk_sample.ext4" >/dev/null 2>&1
     
     if [ -f "./test_disk_sample.ext4" ]; then
-        echo "✓ Successfully created 100MB test disk"
+        echo "Successfully created 100MB test disk"
         
         # Test mounting and space check
         mkdir -p /tmp/test_mount
         sudo mount -o loop "./test_disk_sample.ext4" /tmp/test_mount 2>/dev/null
         if [ $? -eq 0 ]; then
             available_space=$(df -m /tmp/test_mount | tail -1 | awk '{print $4}')
-            echo "✓ Test disk mounted successfully"
+            echo "Test disk mounted successfully"
             echo "  Available space: ${available_space}MB"
             
             if [ "$available_space" -gt 50 ]; then
-                echo "✓ Adequate space confirmed (>50MB available)"
+                echo "Adequate space confirmed (>50MB available)"
             else
                 echo "✗ Warning: Limited space on test disk"
             fi
@@ -63,7 +63,7 @@ else
         # Test filesystem check and resize
         if e2fsck -f -p "./test_resize.ext4" >/dev/null 2>&1; then
             if resize2fs "./test_resize.ext4" >/dev/null 2>&1; then
-                echo "✓ Successfully extended and resized filesystem"
+                echo "Successfully extended and resized filesystem"
             else
                 echo "✗ Failed to resize filesystem"
             fi
@@ -82,9 +82,9 @@ echo "=== Configuration Recommendations ==="
 
 if [ "$USE_DEDICATED_TEST_DISK" = "true" ]; then
     if [ "$DISK_SIZE_MB" -lt 512 ]; then
-        echo "⚠ Consider increasing DISK_SIZE_MB to at least 512MB for comprehensive tests"
+        echo "Warning: Consider increasing DISK_SIZE_MB to at least 512MB for tests"
     else
-        echo "✓ DISK_SIZE_MB ($DISK_SIZE_MB MB) should provide adequate space"
+        echo "DISK_SIZE_MB ($DISK_SIZE_MB MB) should provide adequate space"
     fi
 else
     echo "ℹ Using root filesystem resize method"

@@ -1,48 +1,47 @@
 #!/bin/bash
 
-# Utility functions for the IO Performance Comparison Framework
-# Contains shared utility functions used across multiple components
+# Utility functions for IO tests
+# Shared functions across components
 
-# Source configuration
+# Source config
 source "$(dirname "${BASH_SOURCE[0]}")/config.sh"
 
-# Test selection and filtering
+# Test selection
 get_test_list() {
     local all_tests=("${!IO_PATTERNS[@]}")
     local selected_tests=()
     
-    # Apply comprehensive test mode (run everything)
+    # Test mode - run all
     if [ "$COMPREHENSIVE_TEST" = "true" ]; then
-        echo "🚀 Comprehensive test mode enabled - running ALL 17 test patterns" >&2
+        echo "Running ALL 17 patterns" >&2
         selected_tests=("${all_tests[@]}")
-    # Apply quick test filter (select comprehensive but efficient subset)
+    # Quick mode - subset
     elif [ "$QUICK_TEST" = "true" ]; then
-        echo "⚡ Quick test mode enabled - running comprehensive subset of tests" >&2
+        echo "Quick mode - subset" >&2
         for test in "${all_tests[@]}"; do
-            # Include representative tests from each block size and operation type
-            # This gives us good coverage across the matrix of block sizes and operations
+            # Representative tests from each block size
             if [[ "$test" =~ (random_write_512b|random_read_512b|sequential_write_4k|random_read_4k|mixed_4k|sequential_write_64k|random_read_64k|mixed_64k|sequential_write_1m|random_read_1m|mixed_1m) ]]; then
                 selected_tests+=("$test")
             fi
         done
-    # Apply focused block size filter
+    # Focused block size
     elif [ -n "$FOCUSED_BLOCK_SIZE" ]; then
-        echo "🎯 Focused testing on block size: $FOCUSED_BLOCK_SIZE" >&2
+        echo "Focused on: $FOCUSED_BLOCK_SIZE" >&2
         for test in "${all_tests[@]}"; do
             if [[ "$test" =~ "_${FOCUSED_BLOCK_SIZE}_" ]]; then
                 selected_tests+=("$test")
             fi
         done
     else
-        # Default: Run ALL tests (same as comprehensive mode)
-        echo "📊 Default mode - running ALL 17 test patterns" >&2
+        # Default - run all
+        echo "Default - ALL 17 patterns" >&2
         selected_tests=("${all_tests[@]}")
     fi
     
     printf '%s\n' "${selected_tests[@]}"
 }
 
-# Utility functions
+# Utils
 get_host_interface() {
     ip -j route list default | jq -r '.[0].dev' 2>/dev/null || echo "eth0"
 }

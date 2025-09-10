@@ -1,6 +1,6 @@
 # IO Performance Comparison Framework - Modular Version
 
-This is a modular breakdown of the comprehensive IO performance comparison framework. The original monolithic script has been split into multiple focused components for easier testing, debugging, and maintenance.
+This is a modular breakdown of the IO performance comparison framework. The original monolithic script has been split into multiple focused components for easier testing, debugging, and maintenance.
 
 ## Components Overview
 
@@ -64,7 +64,7 @@ You can customize the behavior by setting environment variables:
 # Quick test mode (runs subset of tests)
 QUICK_TEST=true ./run_io_benchmark.sh
 
-# Comprehensive test mode (runs all tests)
+# Test mode (runs all tests)
 COMPREHENSIVE_TEST=true ./run_io_benchmark.sh
 
 # Focus on specific block size
@@ -157,7 +157,7 @@ config.sh (base configuration)
 - Use `QUICK_TEST=true` for rapid validation
 - Use `FOCUSED_BLOCK_SIZE` to test specific scenarios
 - Reduce `ITERATIONS` for faster testing during development
-- Check system resources (CPU, memory, disk) before running comprehensive tests
+- Check system resources (CPU, memory, disk) before running tests
 
 ## Output Files
 

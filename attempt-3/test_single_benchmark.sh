@@ -59,30 +59,30 @@ analyze_results
 echo ""
 echo "=== VERIFYING OUTPUT FILES ==="
 if [ -f "${RESULTS_DIR}/container_${TEST_NAME}.csv" ]; then
-    echo "✓ Container results file created"
+    echo "Container results file created"
     echo "Container results:"
     cat "${RESULTS_DIR}/container_${TEST_NAME}.csv"
 else
-    echo "❌ Container results file missing"
+    echo "Container results file missing"
 fi
 
 echo ""
 if [ -f "${RESULTS_DIR}/firecracker_${TEST_NAME}.csv" ]; then
-    echo "✓ Firecracker results file created"
+    echo "Firecracker results file created"
     echo "Firecracker results:"
     cat "${RESULTS_DIR}/firecracker_${TEST_NAME}.csv"
 else
-    echo "❌ Firecracker results file missing"
+    echo "Firecracker results file missing"
 fi
 
 echo ""
 if [ -f "${RESULTS_DIR}/analyze_results.py" ]; then
-    echo "✓ Analysis script created"
+    echo "Analysis script created"
 else
-    echo "❌ Analysis script missing"
+    echo "Analysis script missing"
 fi
 
 echo ""
-echo "✅ Single benchmark test completed!"
+echo "Single benchmark test completed!"
 echo "Results saved in: $RESULTS_DIR"
 echo "Note: Cleanup will be performed automatically on script exit"

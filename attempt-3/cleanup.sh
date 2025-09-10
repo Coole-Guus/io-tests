@@ -26,7 +26,7 @@ cleanup() {
         fi
     fi
     
-    # Clean up cgroups - more thorough cleanup
+    # Clean up cgroups
     CGROUP_PATHS=("/sys/fs/cgroup/firecracker_io_test" "/sys/fs/cgroup/cpu/firecracker_io_test" "/sys/fs/cgroup/system.slice/firecracker_io_test.service")
     
     for cgroup_path in "${CGROUP_PATHS[@]}"; do

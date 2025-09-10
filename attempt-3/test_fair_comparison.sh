@@ -11,7 +11,7 @@ source network_setup.sh
 source firecracker_setup.sh
 source container_setup.sh
 
-echo "🔧 IMPLEMENTING FAIRNESS FIXES"
+echo "IMPLEMENTING FAIRNESS FIXES"
 echo "==============================================="
 
 # First, let's clean up any previous state
@@ -19,7 +19,7 @@ echo "Cleaning up previous state..."
 source cleanup.sh && cleanup
 
 echo
-echo "🎯 FAIRNESS APPROACH 1: DISABLE HOST CACHING FOR CONTAINER"
+echo "FAIRNESS APPROACH 1: DISABLE HOST CACHING FOR CONTAINER"
 echo "==============================================="
 
 # Modify container setup to minimize caching advantages
@@ -183,7 +183,7 @@ ssh -i "./ubuntu-24.04.id_rsa" -o StrictHostKeyChecking=no root@172.17.0.2 "
 "
 
 echo
-echo "💡 ANALYSIS:"
+echo "ANALYSIS:"
 echo "============"
 echo "If these results are still heavily skewed toward the container,"
 echo "it indicates fundamental architectural differences that cannot"

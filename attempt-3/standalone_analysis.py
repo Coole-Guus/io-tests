@@ -65,7 +65,7 @@ def analyze_performance(container_file, firecracker_file, test_name):
             result['throughput_improvement'] = 0
             result['throughput_winner'] = 'Unknown'
         
-        print(f"\n🧪 {test_name}")
+        print(f"\nTEST: {test_name}")
         print(f"{'='*60}")
         print(f"Container    | Latency: {result['container_latency_avg']:.2f}μs | Throughput: {result['container_throughput_avg']:.2f} MB/s")
         print(f"Firecracker  | Latency: {result['firecracker_latency_avg']:.2f}μs | Throughput: {result['firecracker_throughput_avg']:.2f} MB/s")
@@ -89,7 +89,7 @@ def main(results_dir):
         return
     
     print(f"\n{'='*60}")
-    print("📊 IO PERFORMANCE ANALYSIS REPORT")
+    print("IO PERFORMANCE ANALYSIS REPORT")
     print(f"{'='*60}")
     print(f"Results Directory: {results_dir}")
     
@@ -115,7 +115,7 @@ def main(results_dir):
     # Generate summary
     if all_results:
         print(f"\n{'='*60}")
-        print("📈 SUMMARY")
+        print("SUMMARY")
         print(f"{'='*60}")
         
         firecracker_latency_wins = sum(1 for r in all_results if r['latency_winner'] == 'Firecracker')
@@ -126,17 +126,17 @@ def main(results_dir):
         
         print(f"Total tests analyzed: {len(all_results)}")
         print(f"\nLatency comparison:")
-        print(f"  • Firecracker wins: {firecracker_latency_wins}")
-        print(f"  • Container wins: {container_latency_wins}")
+        print(f"  Firecracker wins: {firecracker_latency_wins}")
+        print(f"  Container wins: {container_latency_wins}")
         
         print(f"\nThroughput comparison:")
-        print(f"  • Firecracker wins: {firecracker_throughput_wins}")
-        print(f"  • Container wins: {container_throughput_wins}")
+        print(f"  Firecracker wins: {firecracker_throughput_wins}")
+        print(f"  Container wins: {container_throughput_wins}")
     else:
         print("No matching result pairs found for analysis")
     
     print(f"\n{'='*60}")
-    print("🏁 ANALYSIS COMPLETE")
+    print("ANALYSIS COMPLETE")
     print(f"{'='*60}")
 
 if __name__ == "__main__":
