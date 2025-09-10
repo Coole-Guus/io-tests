@@ -29,10 +29,10 @@ LOGFILE="./firecracker-io-test.log"
 VCPU_COUNT=${VCPU_COUNT:-0.5}    # Number of vCPUs for both container and VM (supports fractional)
 MEMORY_SIZE_MIB=${MEMORY_SIZE_MIB:-2048}  # Memory size in MiB for VM
 DISK_SIZE_MB=${DISK_SIZE_MB:-2048}  # Size of test disk in MB (2GB default)
-USE_DEDICATED_TEST_DISK=${USE_DEDICATED_TEST_DISK:-true}  # Create separate test disk instead of using root fs
+USE_DEDICATED_TEST_DISK=${USE_DEDICATED_TEST_DISK:-false}  # Create separate test disk instead of using root fs
 
 # Container optimization configuration
-CONTAINER_STORAGE_MODE=${CONTAINER_STORAGE_MODE:-volume}  # volume, tmpfs, or overlay (default: volume)
+CONTAINER_STORAGE_MODE=${CONTAINER_STORAGE_MODE:-tmpfs}  # volume, tmpfs, or overlay (default: volume)
 ENABLE_CONTAINER_OPTIMIZATIONS=${ENABLE_CONTAINER_OPTIMIZATIONS:-true}  # Enable memory limits, shm-size, etc.
 
 # Shared storage for fair comparison

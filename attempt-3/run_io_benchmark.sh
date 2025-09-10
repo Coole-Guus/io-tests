@@ -84,15 +84,6 @@ main() {
         
         command="${IO_PATTERNS[$pattern_name]}"
         
-        # Test container performance
-        echo "📦 Testing container performance..."
-        monitor_pids=$(monitor_system_metrics "$pattern_name" $((ITERATIONS * 3)) "container_${pattern_name}")
-        run_container_io_test "$pattern_name" "$command" "${RESULTS_DIR}/container_${pattern_name}.csv"
-        stop_monitoring "$monitor_pids"
-        
-        echo "   Container testing complete, waiting 5s..."
-        sleep 5
-        
         # Test Firecracker performance
         echo "🔥 Testing Firecracker performance..."
         monitor_pids=$(monitor_system_metrics "$pattern_name" $((ITERATIONS * 3)) "firecracker_${pattern_name}")
@@ -100,6 +91,15 @@ main() {
         stop_monitoring "$monitor_pids"
         
         echo "   Firecracker testing complete, waiting 5s..."
+        sleep 5
+
+        # Test container performance
+        echo "📦 Testing container performance..."
+        monitor_pids=$(monitor_system_metrics "$pattern_name" $((ITERATIONS * 3)) "container_${pattern_name}")
+        run_container_io_test "$pattern_name" "$command" "${RESULTS_DIR}/container_${pattern_name}.csv"
+        stop_monitoring "$monitor_pids"
+        
+        echo "   Container testing complete, waiting 5s..."
         sleep 5
         
         # Progress update

@@ -227,7 +227,7 @@ setup_firecracker_vm() {
     # Configure VM
     sudo curl -X PUT --unix-socket "${API_SOCKET}" \
         --data '{
-            "kernel_image_path": "./vmlinux-6.1.128",
+            "kernel_image_path": "./vmlinux-6.1.141",
             "boot_args": "console=ttyS0 reboot=k panic=1 pci=off"
         }' \
         "http://localhost/boot-source"
@@ -592,8 +592,8 @@ check_dependencies() {
     fi
     
     # Check for required files
-    if [ ! -f "./vmlinux-6.1.128" ]; then
-        echo "❌ Missing kernel file: vmlinux-6.1.128"
+    if [ ! -f "./vmlinux-6.1.141" ]; then
+        echo "❌ Missing kernel file: vmlinux-6.1.141"
         exit 1
     fi
     

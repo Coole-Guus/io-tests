@@ -1,0 +1,27 @@
+# Ignore everything by default
+*
+
+
+# Allow specific folders and their contents
+!attempt-1/
+!attempt-2/
+!attempt-3/
+!attempt-3/**/*.sh
+!attempt-3/**/*.md
+!attempt-3/**/*.py
+!attempt-3/**/*.ipynb
+
+
+# Allow specific file types in those folders
+!attempt-1/**/*.sh
+!attempt-1/**/*.md
+!attempt-1/**/*.py
+!attempt-1/**/*.ipynb
+
+
+!attempt-2/**/*.sh
+!attempt-2/**/*.md
+!attempt-2/**/*.py
+!attempt-2/**/*.ipynb
+
+!.gitignore

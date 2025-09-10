@@ -16,7 +16,7 @@ setup_firecracker_vm() {
     
     # Copy required files to local directory for absolute paths
     cp "../firecracker" "./firecracker"
-    cp "../vmlinux-6.1.128" "./vmlinux-6.1.128"
+    cp "../vmlinux-6.1.141" "./vmlinux-6.1.141"
     cp "../ubuntu-24.04.ext4" "./ubuntu-24.04.ext4"
     cp "../ubuntu-24.04.id_rsa" "./ubuntu-24.04.id_rsa"
     chmod 600 "./ubuntu-24.04.id_rsa"
@@ -60,7 +60,7 @@ setup_firecracker_vm() {
     KERNEL_BOOT_ARGS="console=ttyS0 reboot=k panic=1 pci=off"
     sudo curl -X PUT --unix-socket "${API_SOCKET}" \
         --data "{
-            \"kernel_image_path\": \"$(pwd)/vmlinux-6.1.128\",
+            \"kernel_image_path\": \"$(pwd)/vmlinux-6.1.141\",
             \"boot_args\": \"${KERNEL_BOOT_ARGS}\"
         }" \
         "http://localhost/boot-source"

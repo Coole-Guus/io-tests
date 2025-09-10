@@ -21,7 +21,7 @@ Before running the framework, ensure you have:
 
 2. **Required Files** (in parent directory):
    - `../firecracker` - Firecracker binary
-   - `../vmlinux-6.1.128` - Linux kernel
+   - `../vmlinux-6.1.141` - Linux kernel
    - `../ubuntu-24.04.ext4` - Root filesystem
    - `../ubuntu-24.04.id_rsa` - SSH private key
 
